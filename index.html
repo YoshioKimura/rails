@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>こんにちは</title>
+  <script  src="https://code.jquery.com/jquery-3.1.1.min.js"  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="  crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <div id="btn" style="background-color:blue;border-radius:5px;" width="100%">ボタンを押すとcsvがでてくるよ</div>
+
+  <canvas id="canvas" width="300" height="300"></canvas>
+
+  <script>
+  var csv_array = [
+      ['生徒番号', '名前', '点数', '評価'],
+      ['A1', '藤原', '80', 'A'],
+      ['A2', '増川', '20', 'C'],
+      ['A3', '直井', '60', 'B'],
+      ['A4', '升', '100', 'S']
+  ];
+  var file_name = 'test.csv';
+
+  //配列をTAB区切り文字列に変換
+  var csv_string = "";
+  for (var i=0; i<csv_array.length; i++) {
+      csv_string += csv_array[i].join("\t");
+      csv_string += '\r\n';
+  }
+
+  //BOM追加
+  csv_string = "\ufffe" + csv_string; //UTF-16
+  console.log (csv_string);
+
+  //実行環境がLEかどうか判別...(3)
+  if (isLittleEndian()) {
+
+      //実行環境のエンディアンがLEならTypedArrayを利用
+      var array = [];
+      for (var i=0; i<csv_string.length; i++){
+          array.push(csv_string.charCodeAt(i));
+      }
+      var csv_contents = new Uint16Array(array);
+
+  } else {
+
+      //LEでない場合はDataViewでUTF-16LEのArrayBufferを作成
+      var array_buffer = new ArrayBuffer(csv_string.length * 2);
+      var data_view = new DataView(array_buffer);
+      for (var i=0,j=0; i<csv_string.length; i++,j=i*2) {
+          data_view.setUint16( j, csv_string.charCodeAt(i), true ); //第3引数にtrueを渡すとLEになる
+      }
+      var csv_contents = array_buffer
+  }
+
+  //ファイル作成
+  var blob = new Blob([csv_contents] , {
+      type: "text/csv;charset=utf-16;"
+  });
+
+  //ダウンロード実行
+  if (window.navigator.msSaveOrOpenBlob) {
+      //IEの場合
+      navigator.msSaveBlob(blob, file_name);
+  } else {
+      //IE以外(Chrome, Firefox)
+      var downloadLink = $('<a></a>');
+      downloadLink.attr('href', window.URL.createObjectURL(blob));
+      downloadLink.attr('download', file_name);
+      downloadLink.attr('target', '_blank');
+
+      $('#btn').append(downloadLink);
+      downloadLink[0].click();
+      downloadLink.remove();
+  }
+
+  // --------------------------------------
+  // 実行環境のエンディアンがLEかどうか判別
+  // --------------------------------------
+  function isLittleEndian(){
+      if ((new Uint8Array((new Uint16Array([0x00ff])).buffer))[0]) return true;
+      return false;
+  }
+
+
+
+  </script>
+
+</body>
+</html>
